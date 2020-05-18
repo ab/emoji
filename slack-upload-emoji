@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euo pipefail
+
+usage() {
+    cat >&2 <<EOM
+usage: $(basename "$0") IMAGE_PATH [EMOJI_NAME]
+
+Upload custom emoji to Slack.
+
+You must set SLACK_TOKEN in environment, typically starts with "xoxs-"
+EOM
+}
+
+
+run() {
+    echo >&2 "+ $*"
+    "$@"
+}
+
+if [ -z "${SLACK_TOKEN-}" ]; then
+    echo >&2 "Please set SLACK_TOKEN=xoxs-..."
+    exit 1
+fi
+
+
+case $# in
+    1)
+        image_path="$1"
+        emoji_name="$(basename "$image_path")"
+        emoji_name="${emoji_name%.*}" # strip extension
+        ;;
+    2)
+        image_path="$1"
+        emoji_name="$2"
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac
+
+curl_opts=
+if [ -n "${DEBUG-}" ]; then
+    curl_opts=-v
+fi
+
+run curl $curl_opts -sSf -X POST \
+    "https://slack.com/api/emoji.add" \
+    -H "Authorization: Bearer $SLACK_TOKEN" \
+    -H 'content-type: multipart/form-data' \
+    -F mode=data \
+    -F name="$emoji_name" \
+    -F image=@"$image_path"
+echo
