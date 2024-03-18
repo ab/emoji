@@ -7,7 +7,17 @@ usage: $(basename "$0") IMAGE_PATH [EMOJI_NAME]
 
 Upload custom emoji to Slack.
 
-You must set SLACK_TOKEN in environment, typically starts with "xoxs-"
+This script uses the normal user token that you can export out of a browser by
+using the browser network inspector and exporting a request as curl.
+
+You must set SLACK_TOKEN and SLACK_COOKIE in the environment.
+
+    SLACK_TOKEN comes from the multipart form data, and starts with "xoxc-"
+
+    SLACK_COOKIE comes from the cookie header. We only need the cookie that
+    starts with "d=xoxd-", but feel free to copy in the entire cookie header
+    value. This should be URL % encoded.
+
 EOM
 }
 
@@ -18,7 +28,12 @@ run() {
 }
 
 if [ -z "${SLACK_TOKEN-}" ]; then
-    echo >&2 "Please set SLACK_TOKEN=xoxs-..."
+    echo >&2 "Please set SLACK_TOKEN=xoxc-..."
+    exit 1
+fi
+
+if [ -z "${SLACK_COOKIE-}" ]; then
+    echo >&2 "PLease set SLACK_COOKIE='d=xoxd-...'"
     exit 1
 fi
 
@@ -46,8 +61,9 @@ fi
 
 run curl $curl_opts -sSf -X POST \
     "https://slack.com/api/emoji.add" \
-    -H "Authorization: Bearer $SLACK_TOKEN" \
     -H 'content-type: multipart/form-data' \
+    -H "cookie: $SLACK_COOKIE" \
+    -F "token=$SLACK_TOKEN" \
     -F mode=data \
     -F name="$emoji_name" \
     -F image=@"$image_path"
